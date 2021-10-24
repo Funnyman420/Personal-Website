@@ -11,6 +11,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using PersonalWebsite.Infrastructure;
+using PersonalWebsite.Persistence;
+using Microsoft.AspNetCore.SpaServices.AngularCli;
+using Microsoft.AspNetCore.Http;
 
 namespace PersonalWebsite.UI
 {
@@ -26,12 +30,27 @@ namespace PersonalWebsite.UI
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
+            services.AddCors();
             services.AddControllers();
+            services.AddRazorPages()
+                .AddRazorPagesOptions(options =>
+                {
+                    options.RootDirectory = "/Pages";
+                    options.Conventions.AuthorizeFolder("/blog");
+                });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "PersonalWebsite.UI", Version = "v1" });
             });
+
+            services.AddPersistence(Configuration);
+
+            services.AddSpaStaticFiles(config =>
+            {
+                config.RootPath = "BlogClient/dist";
+            });
+
+            // services.AddInfrastructure(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -50,9 +69,28 @@ namespace PersonalWebsite.UI
 
             app.UseAuthorization();
 
+            // app.UseInfrastructure();
+
+            app.UseStaticFiles();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapRazorPages();
+            });
+
+            app.Map(new PathString("/blog"), !env.IsDevelopment(), appMember =>
+            {
+                appMember.UseSpaStaticFiles();
+                appMember.UseSpa(spa =>
+                {
+                    spa.Options.SourcePath = "BlogClient";
+
+                    if (env.IsDevelopment())
+                    {
+                        spa.UseProxyToSpaDevelopmentServer("http://localhost:4200");
+                    }
+                });
             });
         }
     }
